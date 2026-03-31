@@ -9,15 +9,26 @@ const uiDir = path.join(__dirname, '..');
 const appsDir = path.join(uiDir, 'apps');
 
 const apps: string[] = fs.readdirSync(appsDir).filter((file: string) => {
-  return fs.statSync(path.join(appsDir, file)).isDirectory();
+  if (file === '.' || file === '..') {
+    return false;
+  }
+  try {
+    return fs.statSync(path.join(appsDir, file)).isDirectory();
+  } catch {
+    return false;
+  }
 });
 
 console.log(`Found apps: ${apps.join(', ')}`);
 
 for (const app of apps) {
   console.log(`\n--- Building app: ${app} ---\n`);
-  execSync(`VITE_APP_NAME=${app} npx vite build`, {
+  execSync('npx vite build', {
     stdio: 'inherit',
     cwd: uiDir,
+    env: {
+      ...process.env,
+      VITE_APP_NAME: app,
+    },
   });
 }
