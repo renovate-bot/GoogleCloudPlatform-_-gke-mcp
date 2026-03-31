@@ -1,7 +1,7 @@
 # Makefile for GKE MCP Server
 # Provides convenient shortcuts for common development tasks
 
-.PHONY: help build run install test clean presubmit update-version
+.PHONY: help build build-ui run run-http install install-ui test clean presubmit update-version
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -9,24 +9,38 @@
 # Variables
 BINARY_NAME := gke-mcp
 DOCKER_IMAGE := $(BINARY_NAME)
+UI_DIR := ui
 
 help: ## Display available commands
 	@echo "GKE MCP Server - Available Commands"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-build: ## Build the binary
+build: build-ui ## Build the binary
 	@echo "Building $(BINARY_NAME)..."
 	go build -o $(BINARY_NAME) .
 	@echo "✓ Built $(BINARY_NAME)"
 
-run: build ## Build and run the server
+build-ui: ## Build the UI TypeScript code
+	@echo "Building UI..."
+	@npm --prefix $(UI_DIR) run build
+	@echo "✓ UI built"
+
+run: build-ui build ## Build and run the server
 	./$(BINARY_NAME)
+
+run-http: build-ui build
+	./$(BINARY_NAME) --server-mode http --server-port 8080
 
 install: ## Install the binary to GOPATH/bin
 	@echo "Installing $(BINARY_NAME)..."
 	go install .
 	@echo "✓ Installed to $(shell go env GOPATH)/bin/$(BINARY_NAME)"
+
+install-ui: ## Install the UI npm packages
+	@echo "Installing UI..."
+	@npm --prefix $(UI_DIR) install
+	@echo "✓ Installed UI to $(UI_DIR)"
 
 test: ## Run tests
 	@echo "Running tests..."
@@ -37,6 +51,7 @@ clean: ## Remove build artifacts
 	@rm -f $(BINARY_NAME)
 	@rm -f coverage.out coverage.html
 	@rm -rf dist/
+	@rm -rf ui/dist/
 	@echo "✓ Cleaned"
 
 presubmit: ## Run all presubmit checks (build, test, vet, format)

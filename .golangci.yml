@@ -52,11 +52,17 @@ linters:
     - revive
     - gosec
     - misspell
+  exclusions:
+    paths:
+      - ui/node_modules
 
 formatters:
   enable:
     - gofmt
     - goimports
+  exclusions:
+    paths:
+      - ui/node_modules
 
 formatters-settings:
   gofmt:

@@ -6,3 +6,7 @@ dist/
 gemini-extension.json.out
 vendor/
 release-notes-*.html
+
+# UI dependencies
+ui/node_modules/
+ui/dist/
