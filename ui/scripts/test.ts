@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { uiDir, getApps } from './common/utils';
 
 const apps = getApps();
@@ -10,7 +10,7 @@ let failed = false;
 for (const app of apps) {
   console.log(`\n--- Testing app: ${app} ---\n`);
   try {
-    execSync(`npx vitest run apps/${app} --passWithNoTests`, {
+    execFileSync('npx', ['vitest', 'run', `apps/${app}`, '--passWithNoTests'], {
       stdio: 'inherit',
       cwd: uiDir,
       env: {
