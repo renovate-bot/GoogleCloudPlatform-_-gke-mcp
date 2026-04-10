@@ -42,6 +42,9 @@ See [assets/hpa-example.yaml](assets/hpa-example.yaml) for a template.
 kubectl apply -f assets/hpa-example.yaml
 ```
 
+**Custom Metrics & External Metrics:**
+For GKE, the modern and recommended approach for scaling based on Cloud Monitoring metrics (e.g., Pub/Sub queue length) is to use the **External** metric type, which is natively supported by the GKE control plane without requiring the Custom Metrics Adapter. For application-specific metrics exposed via Prometheus, you can use **Google Cloud Managed Service for Prometheus** or the Prometheus Adapter.
+
 ### 3. Vertical Pod Autoscaling (VPA)
 
 Automatically adjust the CPU and memory reservations for your pods to match actual usage. This is critical for right-sizing workloads.

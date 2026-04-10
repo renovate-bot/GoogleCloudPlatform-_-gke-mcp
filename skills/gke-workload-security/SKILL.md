@@ -120,15 +120,93 @@ gcloud container clusters update <cluster-name> \
 **Run a Sandboxed Pod:**
 Add `runtimeClassName: gvisor` to your Pod spec.
 
+### 6. Pod Security Standards
+
+Enforce security policies on namespaces using labels.
+
+**Enforce Restricted Profile:**
+
+```bash
+kubectl label --overwrite ns <namespace> \
+    pod-security.kubernetes.io/enforce=restricted \
+    pod-security.kubernetes.io/enforce-version=latest
+```
+
+> [!NOTE]
+> Using `latest` ensures you use the policies corresponding to the cluster's current version. You can pin it to a specific version (e.g., `v1.30`) to lock down the namespace to policies of a specific release.
+
+### 7. Secret Manager Integration (CSI Driver)
+
+Mount secrets from Google Cloud Secret Manager directly as volumes in your pods.
+
+**Prerequisites**: Secret Manager CSI driver must be enabled on the cluster.
+
+**Example SecretProviderClass:**
+
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: my-secret-provider
+spec:
+  provider: gcp
+  parameters:
+    secrets: |
+      - resourceName: "projects/<project-id>/secrets/my-secret/versions/latest"
+        fileName: "my-secret-file"
+```
+
+**Example Pod Spec excerpt:**
+
+```yaml
+spec:
+  containers:
+    - name: my-app
+      volumeMounts:
+        - name: secrets-store-inline
+          mountPath: "/mnt/secrets"
+          readOnly: true
+  volumes:
+    - name: secrets-store-inline
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: "my-secret-provider"
+```
+
+### 8. Enable Network Policy Logging
+
+If using GKE Dataplane V2, you can log allowed and denied connections.
+
+**Steps:**
+
+1. Configure the `NetworkLogging` custom resource.
+
+**Example NetworkLogging Manifest:**
+
+```yaml
+apiVersion: networking.gke.io/v1alpha1
+kind: NetworkLogging
+metadata:
+  name: default
+spec:
+  cluster:
+    allow:
+      log: true
+      delegate: true
+    deny:
+      log: true
+      delegate: true
+```
+
+This will log connection details to Cloud Logging.
+
 ## Best Practices
 
-1. **Least Privilege:** Always use Workload Identity with minimal IAM roles.
-   Avoid using Node default service accounts.
-2. **Network Isolation:** Use Network Policies to restrict Pod-to-Pod
-   communication.
-3. **Image Security:** Use Binary Authorization to ensure only trusted images
-   are deployed.
-4. **Regular Audits:** Run the audit script periodically to check for
-   configuration drift.
-5. **Private Clusters:** Prefer Private Clusters to limit public exposure of the
-   control plane and nodes.
+1. **Least Privilege:** Always use Workload Identity with minimal IAM roles. Avoid using Node default service accounts.
+2. **Network Isolation:** Use Network Policies to restrict Pod-to-Pod communication. Enable Network Policy Logging for visibility.
+3. **Image Security:** Use Binary Authorization to ensure only trusted images are deployed.
+4. **Secret Management**: Use Secret Manager CSI driver instead of default Kubernetes secrets for sensitive data.
+5. **Pod Security**: Enforce `baseline` or `restricted` Pod Security Standards on all non-system namespaces.
+6. **Policy Enforcement**: Consider using **Policy Controller** (Gatekeeper) to enforce custom security and compliance policies across the cluster.

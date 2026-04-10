@@ -23,5 +23,6 @@
       "@gke-mcp/ui/shared/*": ["./shared/*"]
     }
   },
-  "include": ["apps", "shared"]
+  "include": ["apps", "shared"],
+  "exclude": ["**/*.spec.ts"]
 }
