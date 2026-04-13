@@ -1,3 +1,8 @@
+---
+name: GKE Storage Best Practices
+description: Guidance on managing storage in GKE clusters.
+---
+
 # GKE Storage Best Practices
 
 This skill provides guidance on managing storage in Google Kubernetes Engine (GKE) clusters.
