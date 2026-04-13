@@ -46,6 +46,7 @@ archives:
       - src: gemini-extension.json
       - src: pkg/install/GEMINI.md
         strip_parent: true
+      - src: skills/**/*
 
 changelog:
   use: github

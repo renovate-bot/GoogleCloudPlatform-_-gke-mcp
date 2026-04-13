@@ -1,6 +1,6 @@
 ---
-name: GKE Storage Best Practices
-description: Guidance on managing storage in GKE clusters.
+name: gke-storage
+description: Guidance on managing storage in Google Kubernetes Engine (GKE) clusters.
 ---
 
 # GKE Storage Best Practices

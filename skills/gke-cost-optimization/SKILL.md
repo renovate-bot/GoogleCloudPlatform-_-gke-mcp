@@ -1,6 +1,6 @@
 ---
-name: GKE Cost Optimization
-description: Guidance on optimizing costs for GKE clusters.
+name: gke-cost-optimization
+description: Guidance on optimizing costs for Google Kubernetes Engine (GKE) clusters.
 ---
 
 # GKE Cost Optimization
