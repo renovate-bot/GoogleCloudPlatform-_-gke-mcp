@@ -56,12 +56,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # Ignore specific dependencies if needed
-    ignore:
-      # Ignore major version updates for stable dependencies
-      # Uncomment to ignore specific packages:
-      # - dependency-name: "k8s.io/client-go"
-      #   update-types: ["version-update:semver-major"]
 
   # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
