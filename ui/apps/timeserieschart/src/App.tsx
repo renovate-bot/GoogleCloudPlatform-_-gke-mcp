@@ -207,7 +207,7 @@ function App() {
             flexDirection: 'column',
           }}
         >
-          <Typography textAlign="center" color="text.primary">
+          <Typography sx={{ textAlign: 'center' }} color="text.primary">
             {title}
           </Typography>
           <TimeSeriesChart

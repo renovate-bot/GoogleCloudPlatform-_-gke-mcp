@@ -104,9 +104,11 @@ export default function App() {
             onChange={handleSelect}
             disabled={submitted}
             MenuProps={{
-              PaperProps: {
-                style: {
-                  maxHeight: MENU_ITEMS_MAX_HEIGHT,
+              slotProps: {
+                paper: {
+                  style: {
+                    maxHeight: MENU_ITEMS_MAX_HEIGHT,
+                  },
                 },
               },
             }}
