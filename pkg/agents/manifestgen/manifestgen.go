@@ -17,12 +17,16 @@ package manifestgen
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 
 	"cloud.google.com/go/vertexai/genai"
 	"github.com/GoogleCloudPlatform/gke-mcp/pkg/config"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+//go:embed instruction.md
+var instructionTemplate string
 
 // Agent handles manifest generation using Vertex AI.
 type Agent struct {
@@ -46,8 +50,9 @@ func NewAgent(ctx context.Context, cfg *config.Config) (*Agent, error) {
 		return nil, fmt.Errorf("failed to create vertex client: %w", err)
 	}
 
-	// Use a default model, e.g., gemini-2.5-pro
-	model := client.GenerativeModel("gemini-2.5-pro")
+	// Use a default model, e.g., gemini-2.5-flash
+	// Note: gemini-2.5-pro might timeout on the massive set of instructions
+	model := client.GenerativeModel("gemini-2.5-flash")
 
 	return &Agent{
 		client: client,
@@ -57,7 +62,7 @@ func NewAgent(ctx context.Context, cfg *config.Config) (*Agent, error) {
 
 // GenerateManifest generates a Kubernetes manifest based on the prompt.
 func (a *Agent) GenerateManifest(ctx context.Context, prompt string) (string, error) {
-	fullPrompt := fmt.Sprintf("Generate a valid Kubernetes manifest for the following request. Return ONLY the YAML content, no markdown blocks or explanations.\n\nRequest: %s", prompt)
+	fullPrompt := fmt.Sprintf("%s\n\n---\n\nUser Request:\n%s", instructionTemplate, prompt)
 
 	resp, err := a.model.GenerateContent(ctx, genai.Text(fullPrompt))
 	if err != nil {
