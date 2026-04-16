@@ -5,7 +5,10 @@ description: Assists in preparing applications and clusters on GKE for productio
 
 # GKE Productionize Skill
 
-This skill acts as a high-level orchestrator for preparing a GKE cluster and its workloads for production readiness. It covers discovery, assessment, and references specialized skills for detailed implementation.
+This skill acts as a high-level orchestrator for preparing a GKE cluster and its workloads for production readiness.
+
+> [!IMPORTANT]
+> This is a **meta-skill** or **orchestrator skill**. You are expected to invoke and run many other specialized skills listed in this document as part of the overall productionization process. Do not attempt to implement all production readiness features directly within this skill; instead, use this skill to assess the environment and then delegate to the specific skills for each domain.
 
 ## Scope
 
@@ -42,7 +45,7 @@ If a specific application is targeted, discover its configuration:
 
 ### 2. Production Readiness Assessment
 
-Go through these areas and assess readiness. Delegate detailed implementation to domain-specific skills.
+Go through these areas and assess readiness. **You should proactively execute the relevant specialized skills to perform the detailed assessment and implementation for each domain.**
 
 #### A. App Onboarding (Pre-Kubernetes)
 
@@ -104,4 +107,4 @@ After the assessment, provide a summary report with a RAG (Red, Amber, Green) st
 
 - **Single App**: Focus on Health Probes, HPA, Resource Limits, PDB, and Workload Identity for that specific app.
 - **Cluster Wide**: Focus on Cluster Autoscaler, Multi-zonal setup, Release Channels, Maintenance Windows, and default Network Policies.
-- **Interactive Approach**: Always ask the user for confirmation or missing info before proceeding with recommendations.
+- **Proactive Execution**: Proactively execute relevant skills (e.g., observability, security, scaling, reliability) to assess and propose improvements, seeking user confirmation before applying state-changing implementations.
