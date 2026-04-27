@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	cloud.google.com/go/container v1.49.0
+	cloud.google.com/go/gkerecommender v0.4.0
 	cloud.google.com/go/logging v1.16.0
 	cloud.google.com/go/monitoring v1.27.0
 	cloud.google.com/go/recommender v1.16.0
