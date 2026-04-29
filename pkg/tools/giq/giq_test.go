@@ -15,6 +15,7 @@
 package giq
 
 import (
+	"context"
 	"testing"
 )
 
@@ -138,5 +139,24 @@ func TestGiqGenerateManifestArgs_DifferentModelServers(t *testing.T) {
 		if args.ModelServer != server {
 			t.Errorf("ModelServer = %s, want %s", args.ModelServer, server)
 		}
+	}
+}
+
+func TestFetchModels_Mock(t *testing.T) {
+	originalFunc := fetchModelsFunc
+	defer func() { fetchModelsFunc = originalFunc }()
+
+	fetchModelsFunc = func(_ context.Context) ([]string, error) {
+		return []string{"model-A", "model-B", "model-C"}, nil
+	}
+
+	res, err := FetchModels(context.Background())
+	if err != nil {
+		t.Fatalf("FetchModels returned error: %v", err)
+	}
+
+	expected := "model-A\nmodel-B\nmodel-C"
+	if res != expected {
+		t.Errorf("FetchModels = %q, want %q", res, expected)
 	}
 }
