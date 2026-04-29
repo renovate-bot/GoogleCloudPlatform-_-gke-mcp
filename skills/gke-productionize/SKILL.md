@@ -47,35 +47,35 @@ If a specific application is targeted, discover its configuration:
 
 ### 2. Production Readiness Assessment
 
-**Before implementation, you MUST view the `SKILL.md` file for each relevant specialized skill listed below and incorporate its guidance into your assessment and plan. Failure to do so will result in a non-compliant production configuration.**
+**Before implementation, you MUST run the skills for each relevant specialized area listed below and incorporate its guidance into your assessment and plan. Failure to do so will result in a non-compliant production configuration.**
 
 #### A. App Onboarding (Pre-Kubernetes)
 
-If the application is not yet running on GKE, delegate to the [gke-app-onboarding](../gke-app-onboarding/SKILL.md) skill for containerization and initial deployment.
+If the application is not yet running on GKE, you MUST run the `gke-app-onboarding` skill for planning containerization, image building, and basic deployment.
 
 #### B. Scalability & Resource Management
 
 Ensure workloads have appropriate resources and autoscaling.
 
-- **Action**: You MUST activate [gke-workload-scaling](../gke-workload-scaling/SKILL.md) for configuring HPA, VPA, and resource limits.
+- **Action**: You MUST run the `gke-workload-scaling` skill for configuring HPA, VPA, and resource limits.
 
 #### C. Observability
 
 Ensure adequate logging and monitoring are in place.
 
-- **Action**: You MUST activate [gke-observability](../gke-observability/SKILL.md) for setting up Cloud Logging, Monitoring, and Managed Prometheus.
+- **Action**: You MUST run the `gke-observability` skill for setting up Cloud Logging, Monitoring, and Managed Prometheus.
 
 #### D. Reliability
 
 Ensure high availability and graceful degradation.
 
-- **Action**: You MUST activate [gke-reliability](../gke-reliability/SKILL.md) for configuring regional clusters, PDBs, and health probes.
+- **Action**: You MUST run the `gke-reliability` skill for configuring regional clusters, PDBs, and health probes.
 
 #### E. Security
 
 Harden the cluster and workloads.
 
-- **Action**: You MUST activate [gke-workload-security](../gke-workload-security/SKILL.md) for Workload Identity, Network Policies, and Shielded Nodes.
+- **Action**: You MUST run the `gke-workload-security` skill for Workload Identity, Network Policies, and Shielded Nodes.
 - **Namespace Isolation**: Ensure workloads run in dedicated namespaces with Pod Security Standards (PSS) enforced via labels.
 - **Least Privilege**: Ensure workloads use dedicated ServiceAccounts instead of the `default` ServiceAccount.
 
@@ -83,19 +83,19 @@ Harden the cluster and workloads.
 
 Ensure stateful data is protected.
 
-- **Action**: You MUST activate [gke-backup-dr](../gke-backup-dr/SKILL.md) for configuring Backup for GKE and restore procedures.
+- **Action**: You MUST run the `gke-backup-dr` skill for configuring Backup for GKE and restore procedures.
 
 #### G. Edge Security & Ingress
 
 Secure external access.
 
-- **Action**: You MUST activate [gke-networking-edge](../gke-networking-edge/SKILL.md) for Gateway API, Ingress, and Cloud Armor.
+- **Action**: You MUST run the `gke-networking-edge` skill for Gateway API, Ingress, and Cloud Armor.
 
 #### H. Cost Optimization
 
 Ensure efficient use of resources.
 
-- **Action**: You MUST activate [gke-cost-optimization](../gke-cost-optimization/SKILL.md) for strategies on rightsizing, quotas, and Spot VMs.
+- **Action**: You MUST run the `gke-cost-optimization` skill for strategies on rightsizing, quotas, and Spot VMs.
 
 ### 3. Production Readiness Scoring
 
