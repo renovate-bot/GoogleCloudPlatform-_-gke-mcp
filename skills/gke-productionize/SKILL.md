@@ -37,6 +37,8 @@ Run these commands to understand the cluster setup:
 If a specific application is targeted, discover its configuration:
 
 - Get deployment/statefulset details: `kubectl get deployment <app-name> -n <namespace> -o yaml`
+- Check for dedicated namespace and labels: `kubectl get namespace <namespace> -o yaml` (Look for Pod Security Standards labels).
+- Check for dedicated service account usage: kubectl get pods -n <namespace> -o custom-columns="NAME:.metadata.name,SERVICE_ACCOUNT:.spec.serviceAccountName"
 - Check for resource requests and limits.
 - Check for liveness, readiness, and startup probes.
 - Check for HPA: `kubectl get hpa -n <namespace>`
@@ -74,6 +76,8 @@ Ensure high availability and graceful degradation.
 Harden the cluster and workloads.
 
 - **Action**: You MUST activate [gke-workload-security](../gke-workload-security/SKILL.md) for Workload Identity, Network Policies, and Shielded Nodes.
+- **Namespace Isolation**: Ensure workloads run in dedicated namespaces with Pod Security Standards (PSS) enforced via labels.
+- **Least Privilege**: Ensure workloads use dedicated ServiceAccounts instead of the `default` ServiceAccount.
 
 #### F. Backup & Disaster Recovery
 
