@@ -353,4 +353,53 @@ spec:
               mountOptions: "implicit-dirs"
 ```
 
+## GIQ (GKE Inference Quickstart)
+
+You can use GIQ to get data-driven recommendations for deploying optimized AI
+inference workloads on GKE.
+
+GIQ functionality is exposed via MCP tools. These tools provide functionality
+equivalent to `gcloud container ai` commands. If a user's request can be
+fulfilled by one of the `gcloud container ai` commands listed below, you MUST
+use the corresponding MCP tool to accomplish the task.
+
+-   fetch_models: gcloud container ai profiles models list
+-   giq_generate_manifest: gcloud container ai profiles manifests create
+
+GIQ provides estimates of expected performance based on benchmarks conducted on
+equivalent infrastructure configurations. Actual performance is not guaranteed
+and will likely vary due to differences in configurations, model tuning,
+datasets, and input load patterns.
+
+GIQ provides equivalent costs in terms of token generation, e.g. cost to
+generate 1M tokens, most kubernetes users pay for the machine instance type
+regardless of token processing rates. Actual costs should be sourced through GCP
+billing features.
+
+The user should be made aware that token costs from GIQ are estimated equivalent
+costs that are provided to support high-level comparisons with
+model-as-a-service solutions.
+
+-   **To see what models have been benchmarked:** Use `fetch_models`. This tool
+    is useful for mapping from natural language (e.g., "Gemma 4") to an exact
+    model name (e.g., "google/gemma-4-31B-it"). The workflow should always call
+    `fetch_models` unless the user provides an exact model name.
+-   **To generate an optimized Kubernetes deployment manifest:** Use
+    `giq_generate_manifest`. You MUST first call `fetch_profiles`
+    to identify a valid configuration. From the chosen `Profile`, you MUST
+    extract and provide the following parameters to
+    `generate_optimized_manifest`:
+    *   **MANDATORY**: `model` (e.g., `google/gemma-4-31B-it`)
+    *   **MANDATORY**: `model_server` (e.g., `vllm`)
+    *   **MANDATORY**: `accelerator` (e.g., `nvidia-l4`)
+    *   **OPTIONAL**: `target_ntpot_milliseconds` (e.g., `500`). The maximum normalized time per output token (NTPOT) in milliseconds.
+    *   When using this tool, include every Kubernetes resource returned in the
+        tool's output (e.g., HorizontalPodAutoscaler, PodMonitoring, Service,
+        etc.) in your final response. Do NOT omit any resources provided by the
+        tool, even if you are applying additional formatting or adding a
+        Namespace.
+    *   **DO NOT**: modify the resulting vLLM image or version, the model has
+        been tested and validated with this exact version (e.g. for Gemma 4
+        model, the vLLM image should be vllm/vllm-openai:gemma4).
+        
 <!-- prettier-ignore-end -->
