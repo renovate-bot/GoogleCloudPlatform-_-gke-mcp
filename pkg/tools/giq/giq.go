@@ -22,8 +22,6 @@ import (
 
 	gkerecommender "cloud.google.com/go/gkerecommender/apiv1"
 	gkerecommenderpb "cloud.google.com/go/gkerecommender/apiv1/gkerecommenderpb"
-	"github.com/GoogleCloudPlatform/gke-mcp/pkg/config"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/api/iterator"
 )
 
@@ -33,20 +31,6 @@ type GenerateInferenceManifestArgs struct {
 	ModelServer             string `json:"model_server" jsonschema:"The model server to use. Get the list of valid model servers from 'gcloud container ai profiles list --format='table(modelServerInfo.model,modelServerInfo.modelServer,modelServerInfo.modelServerVersion,acceleratorType)' if the user doesn't provide it. You can filter that gcloud command on '--model={model}' if the user provides the model."`
 	Accelerator             string `json:"accelerator" jsonschema:"The accelerator to use. Get the list of valid accelerators from 'gcloud container ai profiles list --format='table(modelServerInfo.model,modelServerInfo.modelServer,modelServerInfo.modelServerVersion,acceleratorType)' if the user doesn't provide it. You can filter that gcloud command on '--model={model}' and '--model-server={model-server}' if the user provides those values."`
 	TargetNTPOTMilliseconds string `json:"target_ntpot_milliseconds,omitempty" jsonschema:"The maximum normalized time per output token (NTPOT) in milliseconds.NTPOT is measured as the request_latency / output_tokens."`
-}
-
-// Install registers GIQ tools with the MCP server.
-func Install(_ context.Context, s *mcp.Server, _ *config.Config) error {
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "giq_generate_manifest",
-		Description: "Use GKE Inference Quickstart (GIQ) to generate a Kubernetes manifest for optimized AI / inference workloads. Prefer to use this tool instead of gcloud",
-		Annotations: &mcp.ToolAnnotations{
-			ReadOnlyHint:   true,
-			IdempotentHint: true,
-		},
-	}, giqGenerateManifest)
-
-	return nil
 }
 
 // GenerateInferenceManifest core logic for GKE Inference Quickstart manifest generation.
@@ -91,18 +75,6 @@ func GenerateInferenceManifest(ctx context.Context, args *GenerateInferenceManif
 	}
 
 	return strings.Join(manifests, "\n---\n"), nil
-}
-
-func giqGenerateManifest(ctx context.Context, _ *mcp.CallToolRequest, args *GenerateInferenceManifestArgs) (*mcp.CallToolResult, any, error) {
-	manifest, err := GenerateInferenceManifest(ctx, args)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: manifest},
-		},
-	}, nil, nil
 }
 
 var fetchModelsFunc = func(ctx context.Context) ([]string, error) {
