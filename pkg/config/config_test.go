@@ -20,7 +20,7 @@ import (
 
 func TestNew(t *testing.T) {
 	version := "1.0.0"
-	cfg := New(version)
+	cfg := New(version, false)
 
 	if cfg.UserAgent() != "gke-mcp/"+version {
 		t.Errorf("UserAgent() = %s, want %s", cfg.UserAgent(), "gke-mcp/"+version)
@@ -31,6 +31,9 @@ func TestNew(t *testing.T) {
 	if cfg.AgentModel() != "gemini-2.5-pro" {
 		t.Errorf("AgentModel() = %s, want gemini-2.5-pro", cfg.AgentModel())
 	}
+	if cfg.EnableDeleteTools() {
+		t.Error("Expected EnableDeleteTools to be false")
+	}
 }
 
 func TestNewWithEnvVars(t *testing.T) {
@@ -38,7 +41,7 @@ func TestNewWithEnvVars(t *testing.T) {
 	t.Setenv("GKE_MCP_MODEL", "custom-model")
 
 	version := "1.0.0"
-	cfg := New(version)
+	cfg := New(version, false)
 
 	if cfg.AgentProvider() != "custom-provider" {
 		t.Errorf("AgentProvider() = %s, want custom-provider", cfg.AgentProvider())
@@ -50,9 +53,10 @@ func TestNewWithEnvVars(t *testing.T) {
 
 func TestConfigGetters(t *testing.T) {
 	cfg := &Config{
-		userAgent:        "test-agent",
-		defaultProjectID: "test-project",
-		defaultLocation:  "us-central1",
+		userAgent:         "test-agent",
+		defaultProjectID:  "test-project",
+		defaultLocation:   "us-central1",
+		enableDeleteTools: true,
 	}
 
 	if got := cfg.UserAgent(); got != "test-agent" {
@@ -64,11 +68,14 @@ func TestConfigGetters(t *testing.T) {
 	if got := cfg.DefaultLocation(); got != "us-central1" {
 		t.Errorf("DefaultLocation() = %s, want us-central1", got)
 	}
+	if !cfg.EnableDeleteTools() {
+		t.Error("Expected EnableDeleteTools to be true")
+	}
 }
 
 func TestNewConfigWithVersion(t *testing.T) {
 	testVersion := "0.1.0"
-	cfg := New(testVersion)
+	cfg := New(testVersion, true)
 
 	if cfg == nil {
 		t.Fatal("New() returned nil")
@@ -78,13 +85,17 @@ func TestNewConfigWithVersion(t *testing.T) {
 	if cfg.UserAgent() != expectedUserAgent {
 		t.Errorf("UserAgent() = %s, want %s", cfg.UserAgent(), expectedUserAgent)
 	}
+	if !cfg.EnableDeleteTools() {
+		t.Error("Expected EnableDeleteTools to be true")
+	}
 }
 
 func TestConfigFields(t *testing.T) {
 	cfg := &Config{
-		userAgent:        "test-agent",
-		defaultProjectID: "my-project",
-		defaultLocation:  "us-west1",
+		userAgent:         "test-agent",
+		defaultProjectID:  "my-project",
+		defaultLocation:   "us-west1",
+		enableDeleteTools: false,
 	}
 
 	tests := []struct {
@@ -109,7 +120,7 @@ func TestConfigFields(t *testing.T) {
 func TestConfigUserAgentFormat(t *testing.T) {
 	versions := []string{"0.1.0", "1.0.0", "latest", "v1.2.3"}
 	for _, v := range versions {
-		cfg := New(v)
+		cfg := New(v, false)
 		expected := "gke-mcp/" + v
 		if got := cfg.UserAgent(); got != expected {
 			t.Errorf("UserAgent() for version %s = %s, want %s", v, got, expected)
@@ -183,7 +194,7 @@ func TestNewConfigDifferentVersions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.version, func(t *testing.T) {
-			cfg := New(tt.version)
+			cfg := New(tt.version, false)
 			if cfg.UserAgent() != tt.wantAgent {
 				t.Errorf("UserAgent() = %s, want %s", cfg.UserAgent(), tt.wantAgent)
 			}

@@ -16,77 +16,77 @@ package cluster
 
 import (
 	"testing"
-
-	containerpb "cloud.google.com/go/container/apiv1/containerpb"
 )
 
 func TestListClustersArgs_Fields(t *testing.T) {
-	args := listClustersArgs{
-		ProjectID: "test-project",
-		Location:  "us-central1",
-	}
+	args := listClustersArgs{}
+	args.ProjectID = "test-project"
+	args.Location = "us-central1"
+	args.ReadMask = "name,status"
 
 	if args.ProjectID != "test-project" {
 		t.Errorf("ProjectID = %s, want test-project", args.ProjectID)
 	}
 	if args.Location != "us-central1" {
 		t.Errorf("Location = %s, want us-central1", args.Location)
+	}
+	if args.ReadMask != "name,status" {
+		t.Errorf("ReadMask = %s, want name,status", args.ReadMask)
 	}
 }
 
 func TestGetClustersArgs_Fields(t *testing.T) {
-	args := getClustersArgs{
-		ProjectID: "test-project",
-		Location:  "us-central1",
-		Name:      "my-cluster",
-	}
+	args := getClustersArgs{}
+	args.ProjectID = "test-project"
+	args.Location.Location = "us-central1"
+	args.ClusterName = "my-cluster"
+	args.ReadMask = "name,status"
 
 	if args.ProjectID != "test-project" {
 		t.Errorf("ProjectID = %s, want test-project", args.ProjectID)
 	}
-	if args.Location != "us-central1" {
-		t.Errorf("Location = %s, want us-central1", args.Location)
+	if args.Location.Location != "us-central1" {
+		t.Errorf("Location = %s, want us-central1", args.Location.Location)
 	}
-	if args.Name != "my-cluster" {
-		t.Errorf("Name = %s, want my-cluster", args.Name)
+	if args.ClusterName != "my-cluster" {
+		t.Errorf("ClusterName = %s, want my-cluster", args.ClusterName)
+	}
+	if args.ReadMask != "name,status" {
+		t.Errorf("ReadMask = %s, want name,status", args.ReadMask)
 	}
 }
 
 func TestCreateClustersArgs_Fields(t *testing.T) {
-	args := createClustersArgs{
-		ProjectID: "test-project",
-		Location:  "us-central1",
-		Cluster: containerpb.Cluster{
-			Name: "my-cluster",
-		},
-	}
+	args := createClustersArgs{}
+	args.ProjectID = "test-project"
+	args.Location.Location = "us-central1"
+	args.Cluster = `{"name": "my-cluster"}`
 
 	if args.ProjectID != "test-project" {
 		t.Errorf("ProjectID = %s, want test-project", args.ProjectID)
 	}
-	if args.Location != "us-central1" {
-		t.Errorf("Location = %s, want us-central1", args.Location)
+	if args.Location.Location != "us-central1" {
+		t.Errorf("Location = %s, want us-central1", args.Location.Location)
 	}
-	if args.Cluster.Name != "my-cluster" {
-		t.Errorf("Name = %s, want my-cluster", args.Cluster.Name)
+	if args.Cluster != `{"name": "my-cluster"}` {
+		t.Errorf("Cluster = %s, want {\"name\": \"my-cluster\"}", args.Cluster)
 	}
 }
 
 func TestGetKubeconfigArgs_Fields(t *testing.T) {
-	args := getKubeconfigArgs{
-		ProjectID: "test-project",
-		Location:  "us-west1",
-		Name:      "my-cluster",
-	}
+	var args getKubeconfigArgs
+	args.ProjectID = "test-project"
+	args.Location.Location = "us-west1"
+	args.ClusterName = "my-cluster"
 
 	if args.ProjectID != "test-project" {
 		t.Errorf("ProjectID = %s, want test-project", args.ProjectID)
 	}
-	if args.Location != "us-west1" {
-		t.Errorf("Location = %s, want us-west1", args.Location)
+	if args.Location.Location != "us-west1" {
+		t.Errorf("Location = %s, want us-west1", args.Location.Location)
 	}
-	if args.Name != "my-cluster" {
-		t.Errorf("Name = %s, want my-cluster", args.Name)
+	if args.ClusterName != "my-cluster" {
+		t.Errorf("ClusterName = %s, want my-cluster", args.ClusterName)
 	}
 }
 
@@ -112,29 +112,6 @@ func TestGetNodeSosReportArgs_Fields(t *testing.T) {
 	}
 }
 
-func TestGetNodeSosReportArgs_Defaults(t *testing.T) {
-	args := getNodeSosReportArgs{
-		Node: "my-node",
-	}
-
-	if args.Destination != "" {
-		t.Errorf("Expected empty Destination for default, got %s", args.Destination)
-	}
-	if args.Method != "" {
-		t.Errorf("Expected empty Method for default, got %s", args.Method)
-	}
-	if args.TimeoutSeconds != 0 {
-		t.Errorf("Expected zero TimeoutSeconds for default, got %d", args.TimeoutSeconds)
-	}
-}
-
-func TestGetNodeSosReportArgs_EmptyNode(t *testing.T) {
-	args := getNodeSosReportArgs{}
-	if args.Node != "" {
-		t.Errorf("Expected empty Node, got %s", args.Node)
-	}
-}
-
 func TestListClustersArgs_Empty(t *testing.T) {
 	args := listClustersArgs{}
 	if args.ProjectID != "" {
@@ -143,6 +120,9 @@ func TestListClustersArgs_Empty(t *testing.T) {
 	if args.Location != "" {
 		t.Errorf("Expected empty Location, got %s", args.Location)
 	}
+	if args.ReadMask != "" {
+		t.Errorf("Expected empty ReadMask, got %s", args.ReadMask)
+	}
 }
 
 func TestGetClustersArgs_Empty(t *testing.T) {
@@ -150,59 +130,64 @@ func TestGetClustersArgs_Empty(t *testing.T) {
 	if args.ProjectID != "" {
 		t.Errorf("Expected empty ProjectID, got %s", args.ProjectID)
 	}
-	if args.Location != "" {
-		t.Errorf("Expected empty Location, got %s", args.Location)
+	if args.Location.Location != "" {
+		t.Errorf("Expected empty Location, got %s", args.Location.Location)
 	}
-	if args.Name != "" {
-		t.Errorf("Expected empty Name, got %s", args.Name)
+	if args.ClusterName != "" {
+		t.Errorf("Expected empty ClusterName, got %s", args.ClusterName)
+	}
+	if args.ReadMask != "" {
+		t.Errorf("Expected empty ReadMask, got %s", args.ReadMask)
 	}
 }
 
-func TestGetKubeconfigArgs_Empty(t *testing.T) {
-	args := getKubeconfigArgs{}
+func TestCreateClustersArgs_Empty(t *testing.T) {
+	args := createClustersArgs{}
 	if args.ProjectID != "" {
 		t.Errorf("Expected empty ProjectID, got %s", args.ProjectID)
 	}
-	if args.Location != "" {
-		t.Errorf("Expected empty Location, got %s", args.Location)
+	if args.Location.Location != "" {
+		t.Errorf("Expected empty Location, got %s", args.Location.Location)
 	}
-	if args.Name != "" {
-		t.Errorf("Expected empty Name, got %s", args.Name)
-	}
-}
-
-func TestListClustersArgs_JSONTags(t *testing.T) {
-	args := listClustersArgs{
-		ProjectID: "my-project",
-		Location:  "us-east1",
-	}
-
-	if args.ProjectID != "my-project" {
-		t.Error("ProjectID field not working correctly")
+	if args.Cluster != "" {
+		t.Errorf("Expected empty Cluster, got %s", args.Cluster)
 	}
 }
 
-func TestGetClustersArgs_JSONTags(t *testing.T) {
-	args := getClustersArgs{
-		ProjectID: "my-project",
-		Location:  "us-east1",
-		Name:      "my-cluster",
-	}
+func TestUpdateClusterArgs_Fields(t *testing.T) {
+	args := updateClusterArgs{}
+	args.ProjectID = "test-project"
+	args.Location.Location = "us-central1"
+	args.ClusterName = "my-cluster"
+	args.Update = `{"description": "new description"}`
 
-	if args.Name != "my-cluster" {
-		t.Error("Name field not working correctly")
+	if args.ProjectID != "test-project" {
+		t.Errorf("ProjectID = %s, want test-project", args.ProjectID)
+	}
+	if args.Location.Location != "us-central1" {
+		t.Errorf("Location = %s, want us-central1", args.Location.Location)
+	}
+	if args.ClusterName != "my-cluster" {
+		t.Errorf("ClusterName = %s, want my-cluster", args.ClusterName)
+	}
+	if args.Update != `{"description": "new description"}` {
+		t.Errorf("Update = %s, want {\"description\": \"new description\"}", args.Update)
 	}
 }
 
-func TestGetNodeSosReportArgs_JSONTags(t *testing.T) {
-	args := getNodeSosReportArgs{
-		Node:           "gke-test-pool-abc123",
-		Destination:    "/custom/path",
-		Method:         "ssh",
-		TimeoutSeconds: 600,
-	}
+func TestDeleteClusterArgs_Fields(t *testing.T) {
+	args := deleteClusterArgs{}
+	args.ProjectID = "test-project"
+	args.Location.Location = "us-central1"
+	args.ClusterName = "my-cluster"
 
-	if args.TimeoutSeconds != 600 {
-		t.Error("TimeoutSeconds field not working correctly")
+	if args.ProjectID != "test-project" {
+		t.Errorf("ProjectID = %s, want test-project", args.ProjectID)
+	}
+	if args.Location.Location != "us-central1" {
+		t.Errorf("Location = %s, want us-central1", args.Location.Location)
+	}
+	if args.ClusterName != "my-cluster" {
+		t.Errorf("ClusterName = %s, want my-cluster", args.ClusterName)
 	}
 }

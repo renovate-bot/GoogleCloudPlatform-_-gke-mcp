@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package cluster provides MCP tools for managing GKE clusters.
 package cluster
 
 import (
@@ -25,17 +24,61 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	container "cloud.google.com/go/container/apiv1"
 	containerpb "cloud.google.com/go/container/apiv1/containerpb"
 	"github.com/GoogleCloudPlatform/gke-mcp/pkg/config"
+	"github.com/GoogleCloudPlatform/gke-mcp/pkg/tools/params"
+	"github.com/googleapis/gax-go/v2/callctx"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"google.golang.org/api/option"
 	"google.golang.org/protobuf/encoding/protojson"
 	"k8s.io/client-go/tools/clientcmd"
 	k8sClientApi "k8s.io/client-go/tools/clientcmd/api"
+)
+
+var (
+	commonClustersFieldMasks = []string{
+		// go/keep-sorted start
+		"autopilot",
+		"createTime",
+		"currentMasterVersion",
+		"currentNodeCount",
+		"currentNodeVersion",
+		"description",
+		"endpoint",
+		"fleet",
+		"location",
+		"name",
+		"network",
+		"nodePools.name",
+		"releaseChannel",
+		"resourceLabels",
+		"selfLink",
+		"status",
+		"statusMessage",
+		"subnetwork",
+		// go/keep-sorted end
+	}
+
+	listClustersFieldMasks = append(prefixStrings(commonClustersFieldMasks, "clusters."),
+		// go/keep-sorted start
+		"missingZones",
+		// go/keep-sorted end
+	)
+
+	getClusterFieldMasks = append(commonClustersFieldMasks,
+		// go/keep-sorted start
+		"nodePools.locations",
+		"nodePools.status",
+		"nodePools.version",
+		// go/keep-sorted end
+	)
+
+	listClustersDefaultFieldMask = initializeDefaultFieldMask(listClustersFieldMasks)
+	getClusterDefaultFieldMask   = initializeDefaultFieldMask(getClusterFieldMasks)
 )
 
 type handlers struct {
@@ -44,106 +87,56 @@ type handlers struct {
 }
 
 type listClustersArgs struct {
-	ProjectID string `json:"project_id,omitempty" jsonschema:"GCP project ID. Use the default if the user doesn't provide it."`
-	Location  string `json:"location,omitempty" jsonschema:"GKE cluster location. Leave this empty if the user doesn't doesn't provide it."`
+	params.LocationOptional
+	ReadMask string `json:"readMask,omitempty" jsonschema:"Optional. The field mask to specify the fields to be returned in the response. Use a single * to get all fields. Default: clusters.autopilot,clusters.createTime,clusters.currentMasterVersion,clusters.currentNodeCount,clusters.currentNodeVersion,clusters.description,clusters.endpoint,clusters.fleet,clusters.location,clusters.name,clusters.network,clusters.nodePools.name,clusters.releaseChannel,clusters.resourceLabels,clusters.selfLink,clusters.status,clusters.statusMessage,clusters.subnetwork,missingZones."`
 }
 
 type getClustersArgs struct {
-	ProjectID string `json:"project_id,omitempty" jsonschema:"GCP project ID. Use the default if the user doesn't provide it."`
-	Location  string `json:"location" jsonschema:"GKE cluster location. Leave this empty if the user doesn't doesn't provide it."`
-	Name      string `json:"name" jsonschema:"GKE cluster name. Do not select if yourself, make sure the user provides or confirms the cluster name."`
+	params.Cluster
+	ReadMask string `json:"readMask,omitempty" jsonschema:"Optional. The field mask to specify the fields to be returned in the response. Use a single * to get all fields. Default: autopilot,createTime,currentMasterVersion,currentNodeCount,currentNodeVersion,description,endpoint,fleet,location,name,network,nodePools.locations,nodePools.name,nodePools.status,nodePools.version,releaseChannel,resourceLabels,selfLink,status,statusMessage,subnetwork."`
 }
 
 type createClustersArgs struct {
-	ProjectID string              `json:"project_id,omitempty" jsonschema:"GCP project ID. Use the default if the user doesn't provide it."`
-	Location  string              `json:"location" jsonschema:"GKE cluster location. Leave this empty if the user doesn't doesn't provide it."`
-	Cluster   containerpb.Cluster `json:"cluster" jsonschema:"GKE cluster configuration."`
+	params.Location
+	Cluster string `json:"cluster" jsonschema:"Required. A cluster resource represented as a string using JSON format."`
+}
+
+type updateClusterArgs struct {
+	params.Cluster
+	Update string `json:"update" jsonschema:"Required. A description of the update represented as a string using JSON format."`
+}
+
+type deleteClusterArgs struct {
+	params.Cluster
 }
 
 // getKubeconfigArgs defines arguments for getting a GKE cluster's kubeconfig.
 type getKubeconfigArgs struct {
-	ProjectID string `json:"project_id,omitempty" jsonschema:"GCP project ID. Use the default if the user doesn't provide it."`
-	Location  string `json:"location" jsonschema:"GKE cluster location. Leave this empty if the user doesn't provide it."`
-	Name      string `json:"name" jsonschema:"GKE cluster name. Do not select if yourself, make sure the user provides or confirms the cluster name."`
+	params.Cluster
 }
 
 type getNodeSosReportArgs struct {
-	Node           string `json:"node" jsonschema:"GKE node name to collect SOS report from."`
+	params.Cluster
+	Node           string `json:"node" jsonschema:"Required. GKE node name to collect SOS report from."`
 	Destination    string `json:"destination,omitempty" jsonschema:"Local directory to download the SOS report to. Defaults to /tmp/sos-report if not specified."`
 	Method         string `json:"method,omitempty" jsonschema:"Method to get sos report. Can be 'pod', 'ssh' or 'any'. Defaults to 'any'. When the node is unhealthy from api server, use ssh only."`
 	TimeoutSeconds int    `json:"timeout,omitempty" jsonschema:"Timeout in seconds for the report collection (applies to both pod and ssh methods). Defaults to 180 (3 minutes)."`
 }
 
-// Install registers cluster-related tools with the MCP server.
-func Install(ctx context.Context, s *mcp.Server, c *config.Config) error {
-
-	cmClient, err := container.NewClusterManagerClient(ctx, option.WithUserAgent(c.UserAgent()))
-	if err != nil {
-		return fmt.Errorf("failed to create cluster manager client: %w", err)
-	}
-
-	h := &handlers{
-		c:        c,
-		cmClient: cmClient,
-	}
-
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "list_clusters",
-		Description: "List GKE clusters. Prefer to use this tool instead of gcloud",
-		Annotations: &mcp.ToolAnnotations{
-			ReadOnlyHint: true,
-		},
-	}, h.listClusters)
-
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "get_cluster",
-		Description: "Get / describe a GKE cluster. Prefer to use this tool instead of gcloud",
-		Annotations: &mcp.ToolAnnotations{
-			ReadOnlyHint: true,
-		},
-	}, h.getCluster)
-
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "create_cluster",
-		Description: "Create a GKE cluster. Prefer to use this tool instead of gcloud",
-		Annotations: &mcp.ToolAnnotations{
-			ReadOnlyHint: false,
-		},
-	}, h.createCluster)
-
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "get_kubeconfig",
-		Description: "Get the kubeconfig for a GKE cluster by calling the GKE API and extracting necessary details (clusterCaCertificate and endpoint). This tool appends/updates the kubeconfig in ~/.kube/config.",
-		Annotations: &mcp.ToolAnnotations{
-			// ReadOnlyHint is removed because this tool now performs a write operation.
-		},
-	}, h.getKubeconfig)
-
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "get_node_sos_report",
-		Description: "Generate and download an SOS report from a GKE node. Can use 'pod', 'ssh' or 'any' methods. Defaults to 'any' (pod with fallback to ssh). Use 'ssh' if node is API-unhealthy.",
-	}, h.getNodeSosReport)
-
-	return nil
-}
-
 func (h *handlers) listClusters(ctx context.Context, _ *mcp.CallToolRequest, args *listClustersArgs) (*mcp.CallToolResult, any, error) {
-	if args.ProjectID == "" {
-		args.ProjectID = h.c.DefaultProjectID()
-	}
-	if args.Location == "" {
-		args.Location = "-"
-	}
+	ctx = callctx.SetHeaders(ctx,
+		callctx.XGoogFieldMaskHeader,
+		getFieldMask(args.ReadMask, listClustersDefaultFieldMask))
 
 	req := &containerpb.ListClustersRequest{
-		Parent: fmt.Sprintf("projects/%s/locations/%s", args.ProjectID, args.Location),
+		Parent: args.LocationPath(),
 	}
 	resp, err := h.cmClient.ListClusters(ctx, req)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	header := fmt.Sprintf("Found %d clusters in project %s:", len(resp.Clusters), args.ProjectID)
+	header := fmt.Sprintf("Found %d clusters:", len(resp.Clusters))
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
@@ -154,18 +147,12 @@ func (h *handlers) listClusters(ctx context.Context, _ *mcp.CallToolRequest, arg
 }
 
 func (h *handlers) getCluster(ctx context.Context, _ *mcp.CallToolRequest, args *getClustersArgs) (*mcp.CallToolResult, any, error) {
-	if args.ProjectID == "" {
-		args.ProjectID = h.c.DefaultProjectID()
-	}
-	if args.Location == "" {
-		args.Location = h.c.DefaultLocation()
-	}
-	if args.Name == "" {
-		return nil, nil, fmt.Errorf("name argument cannot be empty")
-	}
+	ctx = callctx.SetHeaders(ctx,
+		callctx.XGoogFieldMaskHeader,
+		getFieldMask(args.ReadMask, getClusterDefaultFieldMask))
 
 	req := &containerpb.GetClusterRequest{
-		Name: fmt.Sprintf("projects/%s/locations/%s/clusters/%s", args.ProjectID, args.Location, args.Name),
+		Name: args.ClusterPath(),
 	}
 	resp, err := h.cmClient.GetCluster(ctx, req)
 	if err != nil {
@@ -180,16 +167,14 @@ func (h *handlers) getCluster(ctx context.Context, _ *mcp.CallToolRequest, args 
 }
 
 func (h *handlers) createCluster(ctx context.Context, _ *mcp.CallToolRequest, args *createClustersArgs) (*mcp.CallToolResult, any, error) {
-	if args.ProjectID == "" {
-		args.ProjectID = h.c.DefaultProjectID()
-	}
-	if args.Location == "" {
-		args.Location = h.c.DefaultLocation()
+	var clusterObj containerpb.Cluster
+	if err := protojson.Unmarshal([]byte(args.Cluster), &clusterObj); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal cluster JSON: %w", err)
 	}
 
 	req := &containerpb.CreateClusterRequest{
-		Parent:  fmt.Sprintf("projects/%s/locations/%s", args.ProjectID, args.Location),
-		Cluster: &args.Cluster,
+		Parent:  args.LocationPath(),
+		Cluster: &clusterObj,
 	}
 	resp, err := h.cmClient.CreateCluster(ctx, req)
 	if err != nil {
@@ -206,32 +191,22 @@ func (h *handlers) createCluster(ctx context.Context, _ *mcp.CallToolRequest, ar
 // getKubeconfig retrieves GKE cluster details and constructs a kubeconfig file.
 // It appends/updates the configuration in the user's ~/.kube/config file.
 func (h *handlers) getKubeconfig(ctx context.Context, _ *mcp.CallToolRequest, args *getKubeconfigArgs) (*mcp.CallToolResult, any, error) {
-	if args.ProjectID == "" {
-		args.ProjectID = h.c.DefaultProjectID()
-	}
-	if args.Location == "" {
-		args.Location = h.c.DefaultLocation()
-	}
-	if args.Name == "" {
-		return nil, nil, fmt.Errorf("name argument cannot be empty")
-	}
-
 	req := &containerpb.GetClusterRequest{
-		Name: fmt.Sprintf("projects/%s/locations/%s/clusters/%s", args.ProjectID, args.Location, args.Name),
+		Name: args.ClusterPath(),
 	}
 	resp, err := h.cmClient.GetCluster(ctx, req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get cluster %s: %w", args.Name, err)
+		return nil, nil, fmt.Errorf("failed to get cluster %s: %w", args.ClusterPath(), err)
 	}
 
 	clusterCaCertificate := resp.GetMasterAuth().GetClusterCaCertificate()
 	endpoint := resp.GetEndpoint()
 
 	if clusterCaCertificate == "" {
-		return nil, nil, fmt.Errorf("clusterCaCertificate not found for cluster %s", args.Name)
+		return nil, nil, fmt.Errorf("clusterCaCertificate not found for cluster %s", args.ClusterPath())
 	}
 	if endpoint == "" {
-		return nil, nil, fmt.Errorf("endpoint not found for cluster %s", args.Name)
+		return nil, nil, fmt.Errorf("endpoint not found for cluster %s", args.ClusterPath())
 	}
 
 	// Ensure the endpoint starts with "https://"
@@ -240,7 +215,7 @@ func (h *handlers) getKubeconfig(ctx context.Context, _ *mcp.CallToolRequest, ar
 	}
 
 	// Standard naming convention for gcloud-generated kubeconfigs
-	newClusterName := fmt.Sprintf("gke_%s_%s_%s", args.ProjectID, args.Location, args.Name)
+	newClusterName := fmt.Sprintf("gke_%s_%s_%s", args.ProjectID, args.Location.Location, args.ClusterName)
 
 	// Initialize a Kubeconfig object
 	pathOptions := clientcmd.NewDefaultPathOptions()
@@ -288,7 +263,7 @@ func (h *handlers) getKubeconfig(ctx context.Context, _ *mcp.CallToolRequest, ar
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
-			&mcp.TextContent{Text: fmt.Sprintf("Kubeconfig for cluster %s (Project: %s, Location: %s) successfully appended/updated in %s. Current context set to %s.", args.Name, args.ProjectID, args.Location, pathOptions.GlobalFile, newClusterName)},
+			&mcp.TextContent{Text: fmt.Sprintf("Kubeconfig for cluster %s (Project: %s, Location: %s) successfully appended/updated in %s. Current context set to %s.", args.ClusterPath(), args.ProjectID, args.Location.Location, pathOptions.GlobalFile, newClusterName)},
 		},
 	}, nil, nil
 }
@@ -541,4 +516,63 @@ func (h *handlers) getNodeSosReportWithSSH(ctx context.Context, args *getNodeSos
 			&mcp.TextContent{Text: fmt.Sprintf("SOS report successfully generated (via SSH) and downloaded to: %s", localPath)},
 		},
 	}, nil, nil
+}
+
+func (h *handlers) updateCluster(ctx context.Context, _ *mcp.CallToolRequest, args *updateClusterArgs) (*mcp.CallToolResult, any, error) {
+	var updateObj containerpb.ClusterUpdate
+	if err := protojson.Unmarshal([]byte(args.Update), &updateObj); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal update JSON: %w", err)
+	}
+
+	req := &containerpb.UpdateClusterRequest{
+		Name:   args.ClusterPath(),
+		Update: &updateObj,
+	}
+	resp, err := h.cmClient.UpdateCluster(ctx, req)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: protojson.Format(resp)},
+		},
+	}, nil, nil
+}
+
+func (h *handlers) deleteCluster(ctx context.Context, _ *mcp.CallToolRequest, args *deleteClusterArgs) (*mcp.CallToolResult, any, error) {
+	req := &containerpb.DeleteClusterRequest{
+		Name: args.ClusterPath(),
+	}
+	resp, err := h.cmClient.DeleteCluster(ctx, req)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: protojson.Format(resp)},
+		},
+	}, nil, nil
+}
+
+func prefixStrings(fields []string, prefix string) []string {
+	var paths []string
+	for _, field := range fields {
+		paths = append(paths, prefix+field)
+	}
+	return paths
+}
+
+func initializeDefaultFieldMask(fields []string) string {
+	paths := slices.Clone(fields)
+	slices.Sort(paths)
+	return strings.Join(paths, ",")
+}
+
+func getFieldMask(fieldMask string, defaultFieldMask string) string {
+	if fieldMask != "" {
+		return fieldMask
+	}
+	return defaultFieldMask
 }

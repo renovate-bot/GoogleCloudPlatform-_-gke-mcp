@@ -48,10 +48,11 @@ var (
 	version = "(unknown)"
 
 	// command flags
-	serverMode     string
-	serverHost     string
-	serverPort     int
-	allowedOrigins []string
+	serverMode        string
+	serverHost        string
+	serverPort        int
+	allowedOrigins    []string
+	enableDeleteTools bool
 
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd = &cobra.Command{
@@ -113,6 +114,7 @@ func init() {
 	rootCmd.Flags().StringVar(&serverHost, "server-host", "127.0.0.1", "server host to use when server-mode is http; defaults to 127.0.0.1")
 	rootCmd.Flags().IntVar(&serverPort, "server-port", 8080, "server port to use when server-mode is http; defaults to 8080")
 	rootCmd.Flags().StringSliceVar(&allowedOrigins, "allowed-origins", []string{"http://localhost"}, "comma-separated list of allowed Origin headers")
+	rootCmd.Flags().BoolVar(&enableDeleteTools, "enable-delete-tools", false, "Enable destructive delete tools (delete_cluster, delete_node_pool)")
 	rootCmd.AddCommand(installCmd)
 
 	installCmd.AddCommand(installGeminiCLICmd)
@@ -145,7 +147,7 @@ func runRootCmd(cmd *cobra.Command, _ []string) {
 }
 
 func startMCPServer(ctx context.Context, opts startOptions) {
-	c := config.New(version)
+	c := config.New(version, enableDeleteTools)
 
 	instructions := ""
 	if err := adcAuthCheck(ctx, c); err != nil {

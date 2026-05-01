@@ -24,11 +24,12 @@ import (
 
 // Config contains runtime configuration derived from the environment.
 type Config struct {
-	userAgent        string
-	defaultProjectID string
-	defaultLocation  string
-	agentProvider    string
-	agentModel       string
+	userAgent         string
+	defaultProjectID  string
+	defaultLocation   string
+	agentProvider     string
+	agentModel        string
+	enableDeleteTools bool
 }
 
 // UserAgent returns the user agent string for outbound API calls.
@@ -56,8 +57,13 @@ func (c *Config) AgentModel() string {
 	return c.agentModel
 }
 
+// EnableDeleteTools returns true if destructive delete tools are enabled.
+func (c *Config) EnableDeleteTools() bool {
+	return c.enableDeleteTools
+}
+
 // New constructs a Config populated from gcloud and build version.
-func New(version string) *Config {
+func New(version string, enableDeleteTools bool) *Config {
 	provider := os.Getenv("GKE_MCP_PROVIDER")
 	if provider == "" {
 		provider = "vertex-ai"
@@ -68,11 +74,12 @@ func New(version string) *Config {
 	}
 
 	return &Config{
-		userAgent:        "gke-mcp/" + version,
-		defaultProjectID: getDefaultProjectID(),
-		defaultLocation:  getDefaultLocation(),
-		agentProvider:    provider,
-		agentModel:       model,
+		userAgent:         "gke-mcp/" + version,
+		defaultProjectID:  getDefaultProjectID(),
+		defaultLocation:   getDefaultLocation(),
+		agentProvider:     provider,
+		agentModel:        model,
+		enableDeleteTools: enableDeleteTools,
 	}
 }
 
