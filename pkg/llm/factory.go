@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/gke-mcp/pkg/config"
+	"github.com/GoogleCloudPlatform/gke-mcp/pkg/llm/anthropic"
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/model/gemini"
 	"google.golang.org/genai"
@@ -32,12 +33,7 @@ func NewClient(ctx context.Context, cfg *config.Config) (model.LLM, error) {
 		return nil, fmt.Errorf("config parameter 'cfg' cannot be nil")
 	}
 
-	provider, err := parseProvider(cfg.AgentProvider())
-	if err != nil {
-		return nil, err
-	}
-
-	switch provider {
+	switch strings.ToLower(strings.TrimSpace(cfg.AgentProvider())) {
 	case "vertex-ai":
 		llm, err := gemini.NewModel(ctx, cfg.AgentModel(), &genai.ClientConfig{
 			Project:  cfg.DefaultProjectID(),
@@ -49,17 +45,13 @@ func NewClient(ctx context.Context, cfg *config.Config) (model.LLM, error) {
 		}
 		return llm, nil
 
+	case "anthropic":
+		if cfg.AnthropicAPIKey() == "" {
+			return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable must be set when provider is 'anthropic'")
+		}
+		return anthropic.NewModel(cfg.AnthropicAPIKey(), cfg.AgentModel()), nil
+
 	default:
 		return nil, fmt.Errorf("unsupported LLM provider: %s", cfg.AgentProvider())
-	}
-}
-
-func parseProvider(provider string) (string, error) {
-	p := strings.ToLower(strings.TrimSpace(provider))
-	switch p {
-	case "vertex-ai":
-		return "vertex-ai", nil
-	default:
-		return "", fmt.Errorf("unsupported LLM provider: %s", provider)
 	}
 }
