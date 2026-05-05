@@ -48,6 +48,12 @@ type Agent struct {
 	sessionService session.Service
 }
 
+// FetchProfilesArgs holds arguments for fetching GIQ profiles.
+type FetchProfilesArgs struct {
+	Model              string "json:\"model,omitempty\" jsonschema:\"Optional. Filter profiles by model name, e.g. 'gemini-2.5-pro'.\""
+	ModelServer        string "json:\"model_server,omitempty\" jsonschema:\"Optional. Filter profiles by model server, e.g. 'vllm'.\""
+	ModelServerVersion string "json:\"model_server_version,omitempty\" jsonschema:\"Optional. Filter profiles by model server version.\""
+
 // FetchModelServerVersionsArgs holds arguments for fetching GIQ model server versions.
 type FetchModelServerVersionsArgs struct {
 	Model       string `json:"model" jsonschema:"The model for which to list model server versions. Required."`
@@ -88,6 +94,18 @@ func NewAgent(llm model.LLM, cfg *config.Config) (*Agent, error) {
 		return nil, fmt.Errorf("failed to create giq fetch models tool: %w", err)
 	}
 
+	fetchProfilesTool, err := functiontool.New(
+		functiontool.Config{
+			Name:        "giq_fetch_profiles",
+			Description: "Fetch available performance profiles for models and servers in GKE Inference Quickstart (GIQ).",
+		},
+		func(ctx tool.Context, args FetchProfilesArgs) (string, error) {
+			return giq.FetchProfiles(ctx, args.Model, args.ModelServer, args.ModelServerVersion)
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create giq fetch profiles tool: %w", err)
+    
 	fetchModelServerVersionsTool, err := functiontool.New(
 		functiontool.Config{
 			Name:        "giq_fetch_model_server_versions",
@@ -106,7 +124,7 @@ func NewAgent(llm model.LLM, cfg *config.Config) (*Agent, error) {
 		Description: "Agent specialized in generating and validating Kubernetes manifests.",
 		Model:       llm,
 		Instruction: instructionTemplate,
-		Tools:       []tool.Tool{giqTool, fetchModelsTool, fetchModelServerVersionsTool},
+		Tools:       []tool.Tool{giqTool, fetchModelsTool, fetchModelServerVersionsTool, fetchProfilesTool},
 		BeforeModelCallbacks: []llmagent.BeforeModelCallback{
 			func(ctx agent.CallbackContext, llmRequest *model.LLMRequest) (*model.LLMResponse, error) {
 				// Inject user content if Contents is empty to avoid content loss.
