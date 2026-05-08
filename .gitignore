@@ -9,3 +9,12 @@ release-notes-*.html
 
 # UI dependencies
 ui/node_modules/
+ui/dist/
+
+# Python cache and deepeval
+__pycache__/
+.deepeval/
+*.pyc
+
+# Generated reports
+JOB_SUMMARY.md
